@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <L6470Driver.h> 
 #include <Parameters.h>
+#include <I2CMessage.hpp>
 
 /*
   Pinout:
@@ -15,6 +16,9 @@
 SPIWrapper* spiWrapper_;
 miam::L6470* stepperMotors_;
 bool isStepperInit_ = false;
+
+#define LEFT_ENCODER_INDEX 0
+#define RIGHT_ENCODER_INDEX 1
 
 // Read a single bit off a register: return 0 if low, >0 if high.
 #define READ_BIT(REG, BIT) (REG & (1 << BIT))
