@@ -31,8 +31,8 @@
             int spiReadWrite(uint8_t const& numberOfPackets, struct spi_ioc_transfer* spiCtrl);
 
         private:
-            uint32_t frequency_; ///< Frequency, in Hz.
             uint8_t chipSelectPin_;
+            uint32_t frequency_; ///< Frequency, in Hz.
     };
 
 #endif

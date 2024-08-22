@@ -2,7 +2,16 @@
 #define _I2C_MESSAGE_HPP
 
 #include <Arduino.h>
-#include <util/crc16.h>
+#include <FastCRC.h>
+
+// #define DEBUG
+#ifdef DEBUG
+    #define DEBUG_PRINT(x) Serial.print(x)
+    #define DEBUG_PRINTLN(x) Serial.println(x)
+#else
+    #define DEBUG_PRINT(x)
+    #define DEBUG_PRINTLN(x)
+#endif
 
 namespace i2c_message
 {
@@ -40,20 +49,16 @@ namespace i2c_message
     {
         for (uint32_t i = 0; i < len; i++)
         {
-            Serial.print(buffer[i]);
-            Serial.print(" ");
+            DEBUG_PRINT(buffer[i]);
+            DEBUG_PRINT(" ");
         }
-        Serial.println();
+        DEBUG_PRINTLN();
     }
 
     uint16_t _compute_CRC(const uint8_t *buffer, const uint32_t len)
     {
-        uint16_t crc = 0;
-        for (uint32_t i = 0; i < len; i++)
-        {
-            crc = _crc16_update(crc, buffer[i]);
-        }
-        return crc;
+        FastCRC16 CRC16;
+        return CRC16.mcrf4xx(buffer, len);
     }
 
     class I2CMessage
