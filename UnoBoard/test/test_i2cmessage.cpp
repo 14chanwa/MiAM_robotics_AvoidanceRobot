@@ -4,6 +4,8 @@
 uint8_t *write_buffer;
 #define BUFFER_LENGTH 100
 
+using namespace i2c_message;
+
 void setUp(void)
 {
     // set stuff up here
@@ -34,6 +36,10 @@ void test_I2CMasterConfigurationMessage(void)
     Serial.print(", maxAcceleration_=");
     Serial.println(message2.maxAcceleration_);
 
+    uint16_t computed_crc;
+    memcpy(&computed_crc, &(write_buffer[len-sizeof(computed_crc)]), sizeof(computed_crc));
+    TEST_ASSERT_EQUAL_INT16(_compute_CRC(write_buffer, len-2), computed_crc);
+
     TEST_ASSERT_EQUAL_INT32(message.maxSpeed_, message2.maxSpeed_);
     TEST_ASSERT_EQUAL_INT32(message.maxAcceleration_, message2.maxAcceleration_);
 }
@@ -57,6 +63,10 @@ void test_I2CMasterMotorSpeedTargetMessage(void)
     Serial.print(", leftMotorSpeed_=");
     Serial.println(message2.leftMotorSpeed_);
 
+    uint16_t computed_crc;
+    memcpy(&computed_crc, &(write_buffer[len-sizeof(computed_crc)]), sizeof(computed_crc));
+    TEST_ASSERT_EQUAL_INT16(_compute_CRC(write_buffer, len-2), computed_crc);
+    
     TEST_ASSERT_EQUAL_FLOAT(message.rightMotorSpeed_, message2.rightMotorSpeed_);
     TEST_ASSERT_EQUAL_FLOAT(message.leftMotorSpeed_, message2.leftMotorSpeed_);
 }
@@ -85,6 +95,10 @@ void test_I2CSlaveInformationMessage(void)
     Serial.print(", leftEncoderValue_=");
     Serial.println(message2.leftEncoderValue_);
 
+    uint16_t computed_crc;
+    memcpy(&computed_crc, &(write_buffer[len-sizeof(computed_crc)]), sizeof(computed_crc));
+    TEST_ASSERT_EQUAL_INT16(_compute_CRC(write_buffer, len-2), computed_crc);
+    
     TEST_ASSERT_EQUAL_CHAR(message.slaveState_, message2.slaveState_);
     TEST_ASSERT_EQUAL_INT32(message.rightEncoderValue_, message2.rightEncoderValue_);
     TEST_ASSERT_EQUAL_INT32(message.leftEncoderValue_, message2.leftEncoderValue_);
