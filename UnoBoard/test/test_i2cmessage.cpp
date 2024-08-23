@@ -19,22 +19,28 @@ void tearDown(void)
 
 void test_I2CMasterConfigurationMessage(void)
 {
-    I2CMasterConfigurationMessage message = I2CMasterConfigurationMessage(500, 1000);
+    I2CMasterConfigurationMessage message = I2CMasterConfigurationMessage(500, 1000, miam::L6470_STEP_MODE::MICRO_128);
 
     Serial.print("Initial I2CMasterConfigurationMessage: maxSpeed_=");
     Serial.print(message.maxSpeed_);
     Serial.print(", maxAcceleration_=");
-    Serial.println(message.maxAcceleration_);
+    Serial.print(message.maxAcceleration_);
+    Serial.print(", stepMode_=");
+    Serial.println(message.stepMode_);
 
     uint32_t len = message.serialize(write_buffer);
     Serial.print("Serialized I2CMasterConfigurationMessage length ");
     Serial.println(len);
 
+    TEST_ASSERT_TRUE(check_message<I2CMasterConfigurationMessage>(write_buffer, len));
+
     I2CMasterConfigurationMessage message2 = I2CMasterConfigurationMessage(write_buffer);
     Serial.print("Read I2CMasterConfigurationMessage: maxSpeed_=");
     Serial.print(message2.maxSpeed_);
     Serial.print(", maxAcceleration_=");
-    Serial.println(message2.maxAcceleration_);
+    Serial.print(message2.maxAcceleration_);
+    Serial.print(", stepMode_=");
+    Serial.println(message2.stepMode_);
 
     uint16_t computed_crc;
     memcpy(&computed_crc, &(write_buffer[len-sizeof(computed_crc)]), sizeof(computed_crc));
@@ -42,6 +48,7 @@ void test_I2CMasterConfigurationMessage(void)
 
     TEST_ASSERT_EQUAL_INT32(message.maxSpeed_, message2.maxSpeed_);
     TEST_ASSERT_EQUAL_INT32(message.maxAcceleration_, message2.maxAcceleration_);
+    TEST_ASSERT_EQUAL_INT8(message.stepMode_, message2.stepMode_);
 }
 
 void test_I2CMasterMotorSpeedTargetMessage(void)
@@ -56,6 +63,8 @@ void test_I2CMasterMotorSpeedTargetMessage(void)
     uint32_t len = message.serialize(write_buffer);
     Serial.print("Serialized I2CMasterMotorSpeedTargetMessage length ");
     Serial.println(len);
+
+    TEST_ASSERT_TRUE(check_message<I2CMasterMotorSpeedTargetMessage>(write_buffer, len));
 
     I2CMasterMotorSpeedTargetMessage message2 = I2CMasterMotorSpeedTargetMessage(write_buffer);
     Serial.print("Read I2CMasterMotorSpeedTargetMessage: rightMotorSpeed_=");
@@ -86,6 +95,8 @@ void test_I2CSlaveInformationMessage(void)
     uint32_t len = message.serialize(write_buffer);
     Serial.print("Serialized I2CSlaveInformationMessage length ");
     Serial.println(len);
+
+    TEST_ASSERT_TRUE(check_message<I2CSlaveInformationMessage>(write_buffer, len));
 
     I2CSlaveInformationMessage message2 = I2CSlaveInformationMessage(write_buffer);
     Serial.print("Read I2CSlaveInformationMessage: slaveState_=");

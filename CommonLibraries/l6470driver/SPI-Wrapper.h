@@ -20,7 +20,7 @@
         public:
             /// \brief Constructor
             /// \param[in] chipSelectPin
-            SPIWrapper(uint8_t chipSelectPin = 10);
+            SPIWrapper(uint8_t sck, uint8_t miso, uint8_t mosi, uint8_t cs);
 
             /// \brief Send and receives an array of data over spi.
             /// \param[in] data Data to send - the buffer is overwritten with new data.

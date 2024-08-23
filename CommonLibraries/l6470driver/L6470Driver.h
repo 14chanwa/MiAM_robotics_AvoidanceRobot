@@ -18,7 +18,7 @@
 
     namespace miam{
 
-        enum L6470_STEP_MODE{
+        enum L6470_STEP_MODE : uint8_t {
             FULL=0,
             HALF=1,
             MICRO_4=2,

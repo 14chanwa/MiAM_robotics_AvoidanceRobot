@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <FastCRC.h>
+#include <L6470Driver.h>
 
 // #define DEBUG
 #ifdef DEBUG
@@ -12,6 +13,8 @@
     #define DEBUG_PRINT(x)
     #define DEBUG_PRINTLN(x)
 #endif
+
+#define MIAM_I2C_SLAVE_ADDRESS 0x42
 
 namespace i2c_message
 {
@@ -61,18 +64,65 @@ namespace i2c_message
         return CRC16.mcrf4xx(buffer, len);
     }
 
+    template<typename T>
+    uint32_t expected_size()
+    {
+        return T::expected_header_size() + T::expected_payload_size() + sizeof(uint16_t);
+    }
+
+    template <typename T>
+    bool check_message(const uint8_t* buffer, const uint32_t& len)
+    {
+        // Check message length
+        if (len != expected_size<T>())
+        {
+            return false;
+        }
+        // Check CRC
+        uint16_t computed_crc;
+        memcpy(&computed_crc, &(buffer[len-sizeof(computed_crc)]), sizeof(uint16_t));
+        if (_compute_CRC(buffer, len-sizeof(uint16_t)) != computed_crc)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    /*
+        Class definitions
+    */
+
     class I2CMessage
     {
     public:
         I2CMessage(I2CMessageType messageType) : messageType_(messageType) {}
         I2CMessageType get_message_type() { return messageType_; };
-        virtual uint32_t serialize(uint8_t *buffer) = 0;
+        
+        uint32_t serialize(uint8_t *buffer) {
+            uint32_t len = 0;
+            write_header(buffer, len);
+            write_payload(buffer, len);
+            write_crc(buffer, len);
+            _print_buffer(buffer, len);
+            return len;
+        }
+    
+        static uint32_t expected_header_size() { return sizeof(I2CMessageType); }
+        static uint32_t expected_payload_size() { return 0; };
 
-        void add_header(uint8_t *buffer, uint32_t &index)
+    protected:
+        void write_header(uint8_t *buffer, uint32_t &index)
         {
             _serialize<I2CMessageType>(messageType_, buffer, index);
         };
 
+        virtual void write_payload(uint8_t *buffer, uint32_t& index) = 0;
+        
+        void write_crc(uint8_t *buffer, uint32_t &index)
+        {
+            _serialize<int16_t>(_compute_CRC(buffer, index), buffer, index);
+        }
+    private:
         const I2CMessageType messageType_;
     };
 
@@ -81,29 +131,26 @@ namespace i2c_message
     public:
         I2CSlaveInformationMessage() : I2CSlaveInformationMessage(I2CSlaveState::NORMAL_OPERATION, 0, 0) {}
 
-        I2CSlaveInformationMessage(I2CSlaveState slaveState, int32_t rightEncoderValue, int32_t leftEncoderValue) : I2CMessage(I2CMessageType::SLAVE_INFORMATION), rightEncoderValue_(rightEncoderValue), leftEncoderValue_(leftEncoderValue) {}
+        I2CSlaveInformationMessage(I2CSlaveState slaveState, int32_t rightEncoderValue, int32_t leftEncoderValue) : 
+            I2CMessage(I2CMessageType::SLAVE_INFORMATION), slaveState_(slaveState), rightEncoderValue_(rightEncoderValue), leftEncoderValue_(leftEncoderValue) {}
 
         I2CSlaveInformationMessage(uint8_t *buffer) : I2CSlaveInformationMessage()
         {
-            uint32_t len = 0;
-            // First byte is messageType
-            len++;
+            uint32_t len = expected_header_size();
             slaveState_ = _parse<I2CSlaveState>(buffer, len);
             rightEncoderValue_ = _parse<uint32_t>(buffer, len);
             leftEncoderValue_ = _parse<uint32_t>(buffer, len);
         }
 
-        uint32_t serialize(uint8_t *buffer)
-        {
-            uint32_t len = 0;
-            I2CMessage::add_header(buffer, len);
-            _serialize<I2CSlaveState>(slaveState_, buffer, len);
-            _serialize<uint32_t>(rightEncoderValue_, buffer, len);
-            _serialize<uint32_t>(leftEncoderValue_, buffer, len);
-            _serialize<int16_t>(_compute_CRC(buffer, len), buffer, len);
-            _print_buffer(buffer, len);
-            return len;
-        }
+        static uint32_t expected_payload_size() {
+            return sizeof(I2CSlaveState) + sizeof(uint32_t) + sizeof(uint32_t);
+        };
+
+        void write_payload(uint8_t *buffer, uint32_t& index) {
+            _serialize<I2CSlaveState>(slaveState_, buffer, index);
+            _serialize<uint32_t>(rightEncoderValue_, buffer, index);
+            _serialize<uint32_t>(leftEncoderValue_, buffer, index);
+        };
 
         I2CSlaveState slaveState_;
         int32_t rightEncoderValue_;
@@ -113,32 +160,32 @@ namespace i2c_message
     class I2CMasterConfigurationMessage : public I2CMessage
     {
     public:
-        I2CMasterConfigurationMessage() : I2CMasterConfigurationMessage(0, 0) {}
+        I2CMasterConfigurationMessage() : I2CMasterConfigurationMessage(0, 0, miam::L6470_STEP_MODE::FULL) {}
 
-        I2CMasterConfigurationMessage(int32_t maxSpeed, int32_t maxAcceleration) : I2CMessage(I2CMessageType::MASTER_CONFIGURATION), maxSpeed_(maxSpeed), maxAcceleration_(maxAcceleration) {}
+        I2CMasterConfigurationMessage(int32_t maxSpeed, int32_t maxAcceleration, miam::L6470_STEP_MODE stepMode) : 
+            I2CMessage(I2CMessageType::MASTER_CONFIGURATION), maxSpeed_(maxSpeed), maxAcceleration_(maxAcceleration), stepMode_(stepMode) {}
 
         I2CMasterConfigurationMessage(uint8_t *buffer) : I2CMasterConfigurationMessage()
         {
-            uint32_t len = 0;
-            // First byte is messageType
-            len++;
+            uint32_t len = expected_header_size();
             maxSpeed_ = _parse<int32_t>(buffer, len);
             maxAcceleration_ = _parse<int32_t>(buffer, len);
+            stepMode_ = _parse<miam::L6470_STEP_MODE>(buffer, len);
         }
 
-        uint32_t serialize(uint8_t *buffer)
-        {
-            uint32_t len = 0;
-            I2CMessage::add_header(buffer, len);
-            _serialize<int32_t>(maxSpeed_, buffer, len);
-            _serialize<int32_t>(maxAcceleration_, buffer, len);
-            _serialize<int16_t>(_compute_CRC(buffer, len), buffer, len);
-            _print_buffer(buffer, len);
-            return len;
+        static uint32_t expected_payload_size() {
+            return sizeof(int32_t) + sizeof(uint32_t) + sizeof(miam::L6470_STEP_MODE);
+        }
+
+        void write_payload(uint8_t *buffer, uint32_t& index) {
+            _serialize<int32_t>(maxSpeed_, buffer, index);
+            _serialize<int32_t>(maxAcceleration_, buffer, index);
+            _serialize<miam::L6470_STEP_MODE>(stepMode_, buffer, index);
         }
 
         int32_t maxSpeed_;
         int32_t maxAcceleration_;
+        miam::L6470_STEP_MODE stepMode_;
     };
 
     class I2CMasterMotorSpeedTargetMessage : public I2CMessage
@@ -150,22 +197,19 @@ namespace i2c_message
 
         I2CMasterMotorSpeedTargetMessage(uint8_t *buffer) : I2CMasterMotorSpeedTargetMessage()
         {
-            uint32_t len = 0;
-            // First byte is messageType
-            len++;
+            uint32_t len = expected_header_size();
             rightMotorSpeed_ = _parse<float>(buffer, len);
             leftMotorSpeed_ = _parse<float>(buffer, len);
         }
 
-        uint32_t serialize(uint8_t *buffer)
-        {
-            uint32_t len = 0;
-            I2CMessage::add_header(buffer, len);
-            _serialize<float>(rightMotorSpeed_, buffer, len);
-            _serialize<float>(leftMotorSpeed_, buffer, len);
-            _serialize<int16_t>(_compute_CRC(buffer, len), buffer, len);
-            _print_buffer(buffer, len);
-            return len;
+
+        static uint32_t expected_payload_size() {
+            return sizeof(float) + sizeof(float);
+        }
+
+        void write_payload(uint8_t *buffer, uint32_t& index) {
+            _serialize<float>(rightMotorSpeed_, buffer, index);
+            _serialize<float>(leftMotorSpeed_, buffer, index);
         }
 
         float rightMotorSpeed_;

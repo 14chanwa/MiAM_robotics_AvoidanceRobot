@@ -81,7 +81,7 @@ namespace miam
 
         // Verify that parameter setting worked.
         std::vector<uint32_t> value = getParam(dSPIN_KVAL_HOLD);
-
+            
         bool isInitSuccessful = true;
         for(uint32_t v : value)
             if(v != k_hld)

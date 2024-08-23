@@ -9,17 +9,22 @@
 #include <iostream>
 #include <cstring>
 
+#include <Arduino.h>
 #include <SPI.h>
 
 #define SPI_PACKET_DELAY_MICROSECONDS 5
 
-SPIWrapper::SPIWrapper(uint8_t chipSelectPin):
-    chipSelectPin_(chipSelectPin),
+SPIWrapper::SPIWrapper(uint8_t sck, uint8_t miso, uint8_t mosi, uint8_t cs):
+    chipSelectPin_(cs),
     frequency_(4000000)
 {
     pinMode(chipSelectPin_, OUTPUT);
     digitalWrite(chipSelectPin_, HIGH);
+#ifdef AVR_UNO
     SPI.begin();
+#else
+    SPI.begin(sck, miso, mosi);
+#endif
 }
 
 
