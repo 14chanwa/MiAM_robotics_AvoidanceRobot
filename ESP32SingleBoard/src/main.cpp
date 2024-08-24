@@ -41,8 +41,8 @@ const int MOTOR_BEMF[4] = {0x3B, 0x1430, 0x22, 0x53};
 #define RIGHT_ENCODER_INDEX 1
 
 // Encoder pin number: first encoder is in port D, second encoder is in port B.
-const unsigned char encoderPinA[2] = {14, 13};
-const unsigned char encoderPinB[2] = {27, 12};
+const unsigned char encoderPinA[2] = {34, 32};
+const unsigned char encoderPinB[2] = {35, 33};
 
 // Encoder old B value.
 bool oldB[2] = {0, 0};
@@ -239,6 +239,7 @@ void notify()
 void stopPs3BT()
 {
   Ps3.end();
+  // stepperMotors_->hardStop();
 }
 
 
@@ -263,7 +264,7 @@ void setup()
 
   Serial.println("Creating new objects");
 
-  spiWrapper_ = new SPIWrapper(18, 19, 23, 5);
+  spiWrapper_ = new SPIWrapper(21, 19, 18, 5);
   stepperMotors_ = new miam::L6470(spiWrapper_, 2);
 
   // read_buffer = new uint8_t[BUFFER_LENGTH];
@@ -314,15 +315,15 @@ void setup()
   // Serial.println();
   // Serial.println(res);
 
-  bool res = Ps3.begin();
+  bool res = Ps3.begin(SECRET_BT_MAC);
   Serial.print("Ps3.begin(): ");
   Serial.println(res);
 
   String address = Ps3.getAddress();
   Serial.println(address);
 
-  // // Print encoder
-  // xTaskCreate(task_print_encoders, "task_print_encoders", 1000, NULL, 10, NULL);
+  // Print encoder
+  xTaskCreate(task_print_encoders, "task_print_encoders", 1000, NULL, 10, NULL);
 
   // Initialize both motors.
   while (!isStepperInit_)
